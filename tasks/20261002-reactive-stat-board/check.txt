@@ -1,0 +1,4 @@
+PASS 1: source change propagates
+PASS 2: source cutoff rejects proposal
+PASS 3: weight change recomputes display
+3/3 cases passed
