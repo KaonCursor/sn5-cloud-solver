@@ -1,0 +1,4 @@
+PASS 1: build two independent assets
+PASS 2: build one asset
+PASS 3: reuse one valid cache card
+3/3 cases passed
