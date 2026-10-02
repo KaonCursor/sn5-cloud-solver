@@ -1,0 +1,4 @@
+PASS 1: claim lookup and release
+PASS 2: adjacent and overlapping claims
+PASS 3: resize in place
+3/3 cases passed
