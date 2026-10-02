@@ -1,0 +1,57 @@
+diff --git a/src/eventarchive_query.cpp b/src/eventarchive_query.cpp
+index 1eb1c52..7d69b3a 100644
+--- a/src/eventarchive_query.cpp
++++ b/src/eventarchive_query.cpp
+@@ -350,7 +350,7 @@ class PathResolver {
+     }
+     if (records_[definition].kind != Kind::Scalar)
+       return false;  // null and collection keys are ignored
+-    return records_[definition].value == token.c_str();
++    return records_[definition].value == token;
+   }
+ 
+   /** The value record of `token` in a mapping, or a missing/ambiguous error. */
+diff --git a/src/eventarchive_store.cpp b/src/eventarchive_store.cpp
+index 9cfd679..0b7216e 100644
+--- a/src/eventarchive_store.cpp
++++ b/src/eventarchive_store.cpp
+@@ -121,7 +121,7 @@ int ParseInt(const Node& node) {
+ 
+ std::string ParseString(const Node& node) {
+   Require(node.IsScalar());
+-  return node.Scalar().c_str();
++  return node.Scalar();
+ }
+ 
+ // The four checkpoint fields of a mapping, in a fixed order.
+@@ -165,7 +165,9 @@ std::shared_ptr<const EventTape> ReadTape(const Node& events) {
+     Require(record.size() == 8);
+ 
+     ArchiveEvent event;
+-    event.kind = static_cast<Kind>(ParseUnsigned(record[0]));
++    const std::uint64_t kind = ParseUnsigned(record[0]);
++    Require(kind <= static_cast<std::uint64_t>(Kind::Anchor));
++    event.kind = static_cast<Kind>(kind);
+     event.mark.pos = ParseInt(record[1]);
+     event.mark.line = ParseInt(record[2]);
+     event.mark.column = ParseInt(record[3]);
+@@ -211,15 +213,15 @@ bool EventArchive::AppendNext(Parser& parser, std::uint64_t& assigned_id) {
+ 
+   const std::size_t cost = ScalarBytes(*tape);
+ 
++  // Admission is decided before any eviction or identifier assignment.
++  if (cost > max_scalar_bytes_)
++    throw std::runtime_error(kExceedsLimit);
++
+   // Identifier overflow: identifiers are never reused, so the counter running
+   // out is a hard error, not a wrap-around.
+   if (next_id_ == std::numeric_limits<std::uint64_t>::max())
+     throw std::runtime_error("event archive: identifier overflow");
+ 
+-  // Admission is decided before any eviction or identifier assignment.
+-  if (cost > max_scalar_bytes_)
+-    throw std::runtime_error(kExceedsLimit);
+-
+   // Evict the oldest complete documents until the new document fits.  Equality
+   // with the limit fits, and `cost <= max_scalar_bytes_` keeps the subtraction
+   // below well defined.
